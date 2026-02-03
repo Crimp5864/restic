@@ -1,0 +1,16 @@
+[Unit]
+Description=User Restic Backup
+After=network-online.target tailscaled.service
+Wants=network-online.target tailscaled.service
+StartLimitIntervalSec=3min
+StartLimitBurst=3
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/restic-backup
+TimeoutStartSec=1h
+Restart=on-failure
+RestartSec=1min
+
+[Install]
+WantedBy=default.target

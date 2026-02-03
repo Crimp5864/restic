@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+
+notify() {
+	notify-send 'Restic encountered an error'
+}
+
+check_online() {
+	end=$(( SECONDS + 300 ))
+
+	while true; do
+		if ping -c 1 -W 2 $1 &> /dev/null; then
+			return 0
+		elif (( SECONDS >= end )); then
+			echo "Unable to reach $1"
+			exit 1
+		fi
+		echo 'Waiting for network'
+		sleep 1
+	done
+}
+
+config_dir="$HOME/.config/restic"
+env_file="$config_dir/env"
+backup_source="$HOME"
+exclude_file="$config_dir/excludes"
+backup_options=(
+	--one-file-system
+	--exclude-file="$exclude_file"
+	--exclude-caches
+)
+forget_options=(
+	--keep-hourly=24
+	--keep-daily=14
+	--keep-weekly=8
+	--keep-monthly=3
+	--prune
+)
+exit_codes=(
+	[0]='Command was successful.'
+	[1]='Command failed, see command help for more details.'
+	[2]='Go runtime error.'
+	[3]='Backup command could not read some source data.'
+	[10]='Repository does not exist.'
+	[11]='Failed to lock repository.'
+	[12]='Wrong password.'
+	[130]='Restic was interrupted using SIGINT or SIGSTOP.'
+)
+recipient='nicholaswilson97@gmail.com'
+
+if ! source "$env_file" &> /dev/null; then
+	echo "Unable to source $env_file" >&2
+	notify
+	exit 1
+fi
+
+if [[ "$RESTIC_REPOSITORY" =~ tail ]]; then
+	repo_host='nas.taild5a14d.ts.net'
+fi
+
+check_online "${repo_host:=nas.local}"
+
+restic backup "$backup_source" "${backup_options[@]}"
+backup_exit_code=$?
+backup_exit_description="${exit_codes[$backup_exit_code]}"
+echo "Restic backup exited with code $backup_exit_code: $backup_exit_description"
+
+if (( backup_exit_code == 0 )); then
+	restic forget "${forget_options[@]}"
+	forget_exit_code=$?
+	forget_exit_description="${exit_codes[$forget_exit_code]}"
+	echo "Restic forget exited with code $forget_exit_code: $forget_exit_description"
+else
+	forget_exit_code=1
+	forget_exit_description='Skipped because backup failed.'
+fi
+
+if (( backup_exit_code == 0 && forget_exit_code == 0 )); then {
+	{
+		echo "Subject: $HOSTNAME Restic has completed successfully"
+		echo
+		echo "Restic exited with code 0: Command was successful."
+	} | msmtp $recipient
+	exit 0
+}
+else {
+	{
+		echo "Subject: $HOSTNAME Restic encountered an error"
+		echo
+		echo "Restic backup exit code: $backup_exit_code: $backup_exit_description. \
+		    Restic forget exit code: $forget_exit_code: $forget_exit_description"
+	} | msmtp $recipient
+	notify
+	exit 1
+}
+fi
