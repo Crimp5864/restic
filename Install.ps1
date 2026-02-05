@@ -1,0 +1,24 @@
+# MODIFY TO POWERSHELL EQUIVALENT
+
+# Install script for restic backup script and associated files
+#
+# Files: env, excludes, password, restic-backup, restic-backup,service,
+# restic-backup.timer
+
+mk_dir() {
+	for d in "$@"; do
+		mkdir -p "$d" &> /dev/null
+	done
+}
+
+config_dir="$HOME/.config/restic"
+bin_dir="$HOME/.local/bin"
+systemd_dir="$HOME/.config/systemd/user"
+
+mk_dir "$bin_dir" "$config_dir" "$systemd_dir"
+cp env excludes password "$config_dir"
+cp restic-backup "$bin_dir"
+cp restic-backup.{service,timer} "$systemd_dir"
+
+systemctl --user daemon-reload
+systemctl --user --now enable restic-backup.timer
