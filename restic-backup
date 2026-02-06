@@ -19,6 +19,15 @@ check_online() {
 	done
 }
 
+backup() {
+	echo 'restic backup function'
+	forget
+}
+
+forget() {
+	echo 'restic forget function'
+}
+
 config_dir="$HOME/.config/restic"
 env_file="$config_dir/env"
 backup_source="$HOME"
@@ -59,6 +68,7 @@ fi
 
 check_online "${repo_host:=nas.local}"
 
+backup
 restic backup "$backup_source" "${backup_options[@]}"
 backup_exit_code=$?
 backup_exit_description="${exit_codes[$backup_exit_code]}"
