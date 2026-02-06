@@ -16,9 +16,9 @@ bin_dir="$HOME/.local/bin"
 systemd_dir="$HOME/.config/systemd/user"
 
 mk_dir "$bin_dir" "$config_dir" "$systemd_dir"
-cp env excludes password "$config_dir"
-cp restic-backup "$bin_dir"
-cp restic-backup.{service,timer} "$systemd_dir"
+cp --update=none env excludes password "$config_dir"
+cp --update=none restic-backup "$bin_dir"
+cp --update=none restic-backup.{service,timer} "$systemd_dir"
 
 systemctl --user daemon-reload
 if systemctl --user is-enabled restic-backup.timer &> /dev/null; then
