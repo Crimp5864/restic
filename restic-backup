@@ -59,7 +59,6 @@ fi
 
 check_online "${repo_host:=nas.local}"
 
-backup
 restic backup "$backup_source" "${backup_options[@]}"
 backup_exit_code=$?
 backup_exit_description="${exit_codes[$backup_exit_code]}"

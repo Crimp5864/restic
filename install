@@ -21,8 +21,8 @@ cp restic-backup "$bin_dir"
 cp restic-backup.{service,timer} "$systemd_dir"
 
 systemctl --user daemon-reload
-if systemctl --user is-enabled restic-backup.timer; then
-	systemc	--user restart restic-backup.timer
+if systemctl --user is-enabled restic-backup.timer &> /dev/null; then
+	systemctl --user restart restic-backup.timer
 else
 	systemctl --user --now enable restic-backup.timer
 fi
