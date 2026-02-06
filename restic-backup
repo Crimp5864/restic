@@ -19,15 +19,6 @@ check_online() {
 	done
 }
 
-backup() {
-	echo 'restic backup function'
-	forget
-}
-
-forget() {
-	echo 'restic forget function'
-}
-
 config_dir="$HOME/.config/restic"
 env_file="$config_dir/env"
 backup_source="$HOME"
