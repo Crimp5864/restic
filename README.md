@@ -1,7 +1,7 @@
 # Restic backup
 ---
 Typical file locations
-Passwords and other sensitive details are in Bitwarden
+Passwords and other sensitive details are in password manager
 
 ~/.config/restic/
 
