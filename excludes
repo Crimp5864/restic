@@ -4,7 +4,9 @@
 .config/google-chrome/Default/Cache/
 .config/Code/Cache/
 Downloads/
-Google\ Drive/
+Google Drive/
+GoogleDrive/
 GDrive/
 password
-VirtualBox\ VMs/
+VirtualBox VMs/
+.vagrant.d/
