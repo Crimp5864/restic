@@ -9,4 +9,4 @@ GoogleDrive/
 GDrive/
 password
 VirtualBox VMs/
-.vagrant.d/
+.vagrant.d/boxes/
