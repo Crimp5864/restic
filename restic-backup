@@ -5,40 +5,12 @@ notify () {
 	notify-send 'Restic encountered an error'
 }
 
-check_online () {
-	# Simple online check for repo
-	end=$(( SECONDS + 300 ))
-
-	while true; do
-		if ping -c 1 -W 2 $1 &> /dev/null; then
-			return 0
-		elif (( SECONDS >= end )); then
-			echo "Unable to reach $1"
-			exit 1
-		fi
-		echo 'Waiting for network'
-		sleep 1
-	done
-}
-
-backup () {
+run_backup () {
+	# Perform backup with configured options
 	restic backup "$backup_source" "${backup_options[@]}"
-	return $?
 }
 
-check_lock () {
-	for (( i=0; i<1; i++ )); do
-		if [[ "$backup_exit_code" -eq 11 ]]; then
-			echo "$backup_exit_description. Attempting to unlock."
-			if restic unlock; then
-				backup
-			else
-				continue
-			fi
-		fi
-	done
-}
-
+# General configuration
 config_dir="$HOME/.config/restic"
 env_file="$config_dir/env"
 backup_source="$HOME"
@@ -67,52 +39,74 @@ exit_codes=(
 )
 recipient='nicholaswilson97@gmail.com'
 
-if ! source "$env_file" &> /dev/null; then
+# Make sure env file can be sourced or exit
+if ! source "$env_file"; then
 	echo "Unable to source $env_file" >&2
 	notify
 	exit 1
 fi
 
-if [[ "$RESTIC_REPOSITORY" =~ tail ]]; then
+# If client is using tailscale, set repo host accordingly
+if [[ "${RESTIC_REPOSITORY,,}" =~ tail ]]; then
 	repo_host='nas.taild5a14d.ts.net'
+else
+	repo_host='nas.local'
 fi
 
-check_online "${repo_host:=nas.local}"
+# Check if repo host is reachable by ping
+end=$(( SECONDS + 300 ))
 
-backup
+while true; do
+	if ping -c 1 -W 2 "$repo_host" &> /dev/null; then
+		break
+	elif (( SECONDS >= end )); then
+		echo "Unable to reach $repo_host" >&2
+		exit 1
+	fi
+	echo 'Waiting for network'
+	sleep 1
+done
+
+run_backup
 backup_exit_code=$?
 backup_exit_description="${exit_codes[$backup_exit_code]}"
 
-check_lock
+# Check for stale locks and remove
+if (( backup_exit_code == 11 )); then
+	echo "$backup_exit_description. Attempting to unlock."
+	if restic unlock; then
+		run_backup
+		backup_exit_code=$?
+		backup_exit_description="${exit_codes[$backup_exit_code]:-Unknown exit code}"
+	fi
+fi
 
 echo "Restic backup exited with code $backup_exit_code: $backup_exit_description"
 
 if (( backup_exit_code == 0 )); then
 	restic forget "${forget_options[@]}"
 	forget_exit_code=$?
-	forget_exit_description="${exit_codes[$forget_exit_code]}"
+	forget_exit_description="${exit_codes[$forget_exit_code]:-Unknown exit code}"
 	echo "Restic forget exited with code $forget_exit_code: $forget_exit_description"
 else
 	forget_exit_code=1
 	forget_exit_description='Skipped because backup failed.'
 fi
 
-if (( backup_exit_code == 0 && forget_exit_code == 0 )); then {
+if (( backup_exit_code == 0 && forget_exit_code == 0 )); then
 	{
 		echo "Subject: $HOSTNAME Restic has completed successfully"
 		echo
 		echo "Restic exited with code 0: Command was successful."
-	} | msmtp $recipient
+	} | msmtp "$recipient"
 	exit 0
-}
-else {
+else
 	{
 		echo "Subject: $HOSTNAME Restic encountered an error"
 		echo
 		echo "Restic backup exit code: $backup_exit_code: $backup_exit_description. \
 		    Restic forget exit code: $forget_exit_code: $forget_exit_description"
-	} | msmtp $recipient
+	} | msmtp "$recipient"
 	notify
 	exit 1
-}
 fi
