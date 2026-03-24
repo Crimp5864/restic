@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 
-notify() {
+notify () {
+	# Desktop pop-up notifications
 	notify-send 'Restic encountered an error'
 }
 
-check_online() {
+check_online () {
+	# Simple online check for repo
 	end=$(( SECONDS + 300 ))
 
 	while true; do
@@ -16,6 +18,24 @@ check_online() {
 		fi
 		echo 'Waiting for network'
 		sleep 1
+	done
+}
+
+backup () {
+	restic backup "$backup_source" "${backup_options[@]}"
+	return $?
+}
+
+check_lock () {
+	for (( i=0; i<1; i++ )); do
+		if [[ "$backup_exit_code" -eq 11 ]]; then
+			echo "$backup_exit_description. Attempting to unlock."
+			if restic unlock; then
+				backup
+			else
+				continue
+			fi
+		fi
 	done
 }
 
@@ -59,9 +79,12 @@ fi
 
 check_online "${repo_host:=nas.local}"
 
-restic backup "$backup_source" "${backup_options[@]}"
+backup
 backup_exit_code=$?
 backup_exit_description="${exit_codes[$backup_exit_code]}"
+
+check_lock
+
 echo "Restic backup exited with code $backup_exit_code: $backup_exit_description"
 
 if (( backup_exit_code == 0 )); then
