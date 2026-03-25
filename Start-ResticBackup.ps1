@@ -14,8 +14,13 @@ function notify {
 }
 
 function runBackup {
-  # Perform backup with configured options
+  # Perform backup
   & restic backup "$backupSource" @backupOptions | Tee-Object -FilePath "$logFile" -Append
+}
+
+function runForget {
+  # Perform forget and prune
+  & restic forget @forgetOptions | Tee-Object -FilePath "$logFile" -Append
 }
 
 $configDir = "$env:APPDATA\restic"
@@ -61,10 +66,8 @@ if ( -not ( Test-Path -Path "$logDir" -PathType Container ) ) {
 
 if ( $env:RESTIC_REPOSITORY -match 'tail' ) {
   $repoHost = 'nas.taild5a14d.ts.net'
-  Write-Host $repoHost
 } else {
   $repoHost = 'nas.local'
-  Write-Host $repoHost
 }
 
 $end = (Get-Date).AddSeconds(300)
@@ -85,7 +88,7 @@ $backupExitDescription = $exitCodes.Item($backupExitCode)
 
 # Check for stale locks and remove
 if ( $backupExitCode -eq 11 ) {
-  Write-Host "$backupExitDescription Attempting to unlock."
+  log "$backupExitDescription Attempting to unlock."
   if ( & restic unlock ) {
     runBackup
     $backupExitCode = $LASTEXITCODE
@@ -96,10 +99,20 @@ if ( $backupExitCode -eq 11 ) {
 log "Restic backup exited with code ${backupExitCode}: $backupExitDescription"
 
 if ( $backupExitCode -eq 0 ) {
-  & restic forget @forgetOptions | Tee-Object -FilePath "$logFile" -Append
+  runForget
   $forgetExitCode = $LASTEXITCODE
   $forgetExitDescription = $exitCodes.Item($forgetExitCode)
+
+  if ( $forgetExitCode -eq 11 ) {
+    log "$forgetExitDescription Attempting to unlock."
+    if ( & restic unlock ) {
+      runForget
+      $backupExitCode = $LASTEXITCODE
+      $backupExitDescription = $exitCodes.Item($backupExitCode)
+    }
+
   log "Restic forget exited with code ${forgetExitCode}: $forgetExitDescription"
+  }
 } else {
   $forgetExitCode = 1
   $forgetExitDescription = "Skipped because backup failed."
@@ -110,14 +123,14 @@ if ( $backupExitCode -eq 0 -and $forgetExitCode -eq 0 ) {
     Subject = "$env:COMPUTERNAME - Restic has completed successfully"
     TextBody = "Restic exited with code 0: Command was successful."
     }
-  New-MailKitMessage.ps1 @parameters
+  & $PSScriptRoot\New-MailKitMessage.ps1 @parameters
   $host.SetShouldExit(0)
 } else {
   $parameters = @{
     Subject  = "$env:COMPUTERNAME - Restic encountered an error"
     TextBody = "Restic backup exit code: ${backupExitCode}: $backupExitDescription. Restic forget exit code: ${forgetExitCode}: $forgetExitDescription."
   }
-  New-MailKitMessage.ps1 @parameters
+  & $PSScriptRoot\New-MailKitMessage.ps1 @parameters
   notify
   exit 1
 }
