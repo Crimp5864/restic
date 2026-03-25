@@ -1,14 +1,21 @@
 Import-Module -Name BurntToast
 
 function log {
-    param([string]$message)
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    $entry = "$timestamp - $message" + [System.Environment]::NewLine
-    Add-Content -Path "$logFile" -Value "$entry"
+  # Log to file
+  param([string]$message)
+  $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+  $entry = "$timestamp - $message" + [System.Environment]::NewLine
+  Add-Content -Path "$logFile" -Value "$entry"
 }
 
 function notify {
-    New-BurntToastNotification -Text 'Restic encountered an error'
+  # Desktop pop-up notifications
+  New-BurntToastNotification -Text 'Restic encountered an error'
+}
+
+function runBackup {
+  # Perform backup with configured options
+  & restic backup "$backupSource" @backupOptions | Tee-Object -FilePath "$logFile" -Append
 }
 
 $configDir = "$env:APPDATA\restic"
@@ -31,14 +38,14 @@ $forgetOptions = @(
   "--verbose=1"
 )
 $exitCodes = @{
-    0    = "Command was successful."
-    1    = "Command failed, see command help for more details."
-    2    = "Go runtime error."
-    3    = "Backup command could not read some source data."
-    10   = "Repository does not exist."
-    11   = "Failed to lock repository."
-    12   = "Wrong password."
-    130  = "Restic was interrupted using SIGINT or SIGSTOP."
+  0    = "Command was successful."
+  1    = "Command failed, see command help for more details."
+  2    = "Go runtime error."
+  3    = "Backup command could not read some source data."
+  10   = "Repository does not exist."
+  11   = "Failed to lock repository."
+  12   = "Wrong password."
+  130  = "Restic was interrupted using SIGINT or SIGSTOP."
 }
 
 if ( -not ( Test-Path $envFile ) ) {
@@ -52,47 +59,65 @@ if ( -not ( Test-Path -Path "$logDir" -PathType Container ) ) {
   New-Item -Path "$logDir" -ItemType Directory | Out-Null
 }
 
-$end = (Get-Date).AddSeconds(300)
-while ( $true ) {
-    if ( Test-Connection -TargetName nas.local -Count 1 -TimeoutSeconds 2 -Quiet ) {
-      break
-    } elseif ( (Get-Date) -ge $end ) {
-      notify
-      exit 1
-    }
-    log 'Waiting for network'
-    Start-Sleep -Seconds 5  
+if ( $env:RESTIC_REPOSITORY -match 'tail' ) {
+  $repoHost = 'nas.taild5a14d.ts.net'
+  Write-Host $repoHost
+} else {
+  $repoHost = 'nas.local'
+  Write-Host $repoHost
 }
 
-& restic backup "$backupSource" @backupOptions | Tee-Object -FilePath "$logFile" -Append
+$end = (Get-Date).AddSeconds(300)
+while ( $true ) {
+  if ( Test-Connection -TargetName $repoHost -Count 1 -TimeoutSeconds 2 -Quiet ) {
+    break
+  } elseif ( (Get-Date) -ge $end ) {
+    notify
+    exit 1
+  }
+  log 'Waiting for network'
+  Start-Sleep -Seconds 5  
+}
+
+runBackup
 $backupExitCode = $LASTEXITCODE
 $backupExitDescription = $exitCodes.Item($backupExitCode)
+
+# Check for stale locks and remove
+if ( $backupExitCode -eq 11 ) {
+  Write-Host "$backupExitDescription Attempting to unlock."
+  if ( & restic unlock ) {
+    runBackup
+    $backupExitCode = $LASTEXITCODE
+    $backupExitDescription = $exitCodes.Item($backupExitCode)
+  }
+}
+
 log "Restic backup exited with code ${backupExitCode}: $backupExitDescription"
 
 if ( $backupExitCode -eq 0 ) {
-    & restic forget @forgetOptions | Tee-Object -FilePath "$logFile" -Append
-    $forgetExitCode = $LASTEXITCODE
-    $forgetExitDescription = $exitCodes.Item($forgetExitCode)
-    log "Restic forget exited with code ${forgetExitCode}: $forgetExitDescription"
+  & restic forget @forgetOptions | Tee-Object -FilePath "$logFile" -Append
+  $forgetExitCode = $LASTEXITCODE
+  $forgetExitDescription = $exitCodes.Item($forgetExitCode)
+  log "Restic forget exited with code ${forgetExitCode}: $forgetExitDescription"
 } else {
   $forgetExitCode = 1
   $forgetExitDescription = "Skipped because backup failed."
 }
 
 if ( $backupExitCode -eq 0 -and $forgetExitCode -eq 0 ) {
-      $parameters = @{
-      Subject = "$env:COMPUTERNAME - Restic has completed successfully"
-      TextBody = "Restic exited with code 0: Command was successful."
-      }
-  & "$PSScriptRoot\New-MailKitMessage.ps1" @parameters
-  $host.SetShouldExit(0)
-}
-else {
   $parameters = @{
-      Subject  = "$env:COMPUTERNAME - Restic encountered an error"
-      TextBody = "Restic backup exit code: ${backupExitCode}: $backupExitDescription. Restic forget exit code: ${forgetExitCode}: $forgetExitDescription."
+    Subject = "$env:COMPUTERNAME - Restic has completed successfully"
+    TextBody = "Restic exited with code 0: Command was successful."
+    }
+  New-MailKitMessage.ps1 @parameters
+  $host.SetShouldExit(0)
+} else {
+  $parameters = @{
+    Subject  = "$env:COMPUTERNAME - Restic encountered an error"
+    TextBody = "Restic backup exit code: ${backupExitCode}: $backupExitDescription. Restic forget exit code: ${forgetExitCode}: $forgetExitDescription."
   }
-  & "$PSScriptRoot\New-MailKitMessage.ps1" @parameters
+  New-MailKitMessage.ps1 @parameters
   notify
   exit 1
 }
