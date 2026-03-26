@@ -10,6 +10,23 @@ run_backup () {
 	restic backup "$backup_source" "${backup_options[@]}"
 }
 
+run_forget () {
+	# Perform forget with configured options
+	restic forget "${forget_options[@]}"
+}
+
+check_lock () {
+	# Check for stale locks and remove
+	if [[ $1 -eq 11 ]] then
+		echo "$2 Attempting to unlock."
+		if restic unlock; then
+			run_backup
+			backup_exit_code=$?
+			backup_exit_description="${exit_codes[$backup_exit_code]:-Unknown exit code}"
+		fi
+	fi
+}
+
 # General configuration
 config_dir="$HOME/.config/restic"
 env_file="$config_dir/env"
@@ -71,22 +88,17 @@ run_backup
 backup_exit_code=$?
 backup_exit_description="${exit_codes[$backup_exit_code]}"
 
-# Check for stale locks and remove
-if (( backup_exit_code == 11 )); then
-	echo "$backup_exit_description. Attempting to unlock."
-	if restic unlock; then
-		run_backup
-		backup_exit_code=$?
-		backup_exit_description="${exit_codes[$backup_exit_code]:-Unknown exit code}"
-	fi
-fi
+check_lock $backup_exit_code $backup_exit_description
 
 echo "Restic backup exited with code $backup_exit_code: $backup_exit_description"
 
 if (( backup_exit_code == 0 )); then
-	restic forget "${forget_options[@]}"
+	run_forget
 	forget_exit_code=$?
 	forget_exit_description="${exit_codes[$forget_exit_code]:-Unknown exit code}"
+
+	check_lock $forget_exit_code $forget_exit_description
+
 	echo "Restic forget exited with code $forget_exit_code: $forget_exit_description"
 else
 	forget_exit_code=1
