@@ -115,8 +115,6 @@ if ( $backupExitCode -eq 0 ) {
   $forgetExitDescription = "Skipped because backup failed."
 }
 
-exit
-
 if ( $backupExitCode -eq 0 -and $forgetExitCode -eq 0 ) {
   $parameters = @{
     Subject = "$env:COMPUTERNAME - Restic has completed successfully"
