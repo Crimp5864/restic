@@ -18,7 +18,7 @@ run_forget () {
 
 check_lock () {
 	# Check for stale locks and remove
-	if [[ $1 -eq 11 ]] then
+	if [[ "$1" -eq 11 ]] then
 		echo "$2 Attempting to unlock."
 		if restic unlock; then
 			run_backup
@@ -67,11 +67,13 @@ if ! source "$env_file"; then
 fi
 
 # Detect VPN and set repo host accordingly
-if [[ "${RESTIC_REPOSITORY,,}" =~ tail ]]; then
-	repo_host='nas.taild5a14d.ts.net'
-else
-	repo_host='nas.local'
-fi
+#if [[ "${RESTIC_REPOSITORY,,}" =~ tail ]]; then
+#	repo_host='nas.taild5a14d.ts.net'
+#else
+#	repo_host='nas.local'
+#fi
+repo_host="${RESTIC_REPOSITORY#*@}"
+repo_host="${repo_host%%:*}"
 
 # Ping check repo host and exit if unreachable
 end=$(( SECONDS + 300 ))
@@ -91,7 +93,7 @@ run_backup
 backup_exit_code=$?
 backup_exit_description="${exit_codes[$backup_exit_code]}"
 
-check_lock $backup_exit_code $backup_exit_description
+check_lock "$backup_exit_code" "$backup_exit_description"
 
 echo "Restic backup exited with code $backup_exit_code: $backup_exit_description"
 
@@ -100,7 +102,7 @@ if (( backup_exit_code == 0 )); then
 	forget_exit_code=$?
 	forget_exit_description="${exit_codes[$forget_exit_code]:-Unknown exit code}"
 
-	check_lock $forget_exit_code $forget_exit_description
+	check_lock "$forget_exit_code" "$forget_exit_description"
 
 	echo "Restic forget exited with code $forget_exit_code: $forget_exit_description"
 else
