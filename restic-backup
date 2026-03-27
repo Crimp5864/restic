@@ -18,14 +18,23 @@ run_forget () {
 
 check_lock () {
 	# Check for stale locks and remove
-	if [[ "$1" -eq 11 ]] then
-		echo "$2 Attempting to unlock."
+	local exit_code="$1"
+	local exit_description="$2"
+	local operation_function="$3"
+	
+	if [[ "$exit_code" -eq 11 ]] then
+		echo "$exit_description Attempting to unlock..."
 		if restic unlock; then
-			run_backup
-			backup_exit_code=$?
-			backup_exit_description="${exit_codes[$backup_exit_code]:-Unknown exit code}"
+			echo "Unlock successful. Retrying $operation_function..."
+			"$operation_function"
+			return $?
+		else
+			echo "Unlock failed. Aborting $operation_function." >&2
+			return 1
 		fi
 	fi
+
+	return "$exit_code"
 }
 
 # General configuration
@@ -86,18 +95,23 @@ done
 # Perform backup and store exit code
 run_backup
 backup_exit_code=$?
-backup_exit_description="${exit_codes[$backup_exit_code]}"
+backup_exit_description="${exit_codes[$backup_exit_code]:-Unknown exit code}"
 
-check_lock "$backup_exit_code" "$backup_exit_description"
+check_lock "$backup_exit_code" "$backup_exit_description" run_backup
+backup_exit_code=$?
+backup_exit_description="${exit_codes[$backup_exit_code]:-Unknown exit code}"
 
 echo "Restic backup exited with code $backup_exit_code: $backup_exit_description"
 
+# Forget (only if backup is successful)
 if (( backup_exit_code == 0 )); then
 	run_forget
 	forget_exit_code=$?
 	forget_exit_description="${exit_codes[$forget_exit_code]:-Unknown exit code}"
 
-	check_lock "$forget_exit_code" "$forget_exit_description"
+	check_lock "$forget_exit_code" "$forget_exit_description" run_forget
+	forget_exit_code=$?
+	forget_exit_description="${exit_codes[$forget_exit_code]:-Unknown exit code}"
 
 	echo "Restic forget exited with code $forget_exit_code: $forget_exit_description"
 else
