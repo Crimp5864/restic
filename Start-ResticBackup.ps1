@@ -104,7 +104,7 @@ Write-ResticLog "Restic backup exited with code ${backupExitCode}: $backupExitDe
 
 if ( $backupExitCode -eq 0 ) {
   Invoke-ResticForget
-  $forgetExitCode = 11#$LASTEXITCODE
+  $forgetExitCode = $LASTEXITCODE
   $forgetExitDescription = $exitCodes.Item($forgetExitCode)
 
   Test-ResticLock $forgetExitCode $forgetExitDescription
