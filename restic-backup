@@ -67,17 +67,11 @@ if ! source "$env_file"; then
 fi
 
 # Detect VPN and set repo host accordingly
-#if [[ "${RESTIC_REPOSITORY,,}" =~ tail ]]; then
-#	repo_host='nas.taild5a14d.ts.net'
-#else
-#	repo_host='nas.local'
-#fi
 repo_host="${RESTIC_REPOSITORY#*@}"
 repo_host="${repo_host%%:*}"
 
 # Ping check repo host and exit if unreachable
 end=$(( SECONDS + 300 ))
-
 while true; do
 	if ping -c 1 -W 2 "$repo_host" &> /dev/null; then
 		break
@@ -89,6 +83,7 @@ while true; do
 	sleep 1
 done
 
+# Perform backup and store exit code
 run_backup
 backup_exit_code=$?
 backup_exit_description="${exit_codes[$backup_exit_code]}"
