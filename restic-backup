@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+# Functions
 notify () {
 	# Desktop pop-up notifications
 	notify-send 'Restic encountered an error'
@@ -56,21 +57,23 @@ exit_codes=(
 )
 recipient='nicholaswilson97@gmail.com'
 
-# Make sure env file can be sourced or exit
+# Pre-run checks
+#
+# Source env file or exit with error
 if ! source "$env_file"; then
 	echo "Unable to source $env_file" >&2
 	notify
 	exit 1
 fi
 
-# If client is using tailscale, set repo host accordingly
+# Detect VPN and set repo host accordingly
 if [[ "${RESTIC_REPOSITORY,,}" =~ tail ]]; then
 	repo_host='nas.taild5a14d.ts.net'
 else
 	repo_host='nas.local'
 fi
 
-# Check if repo host is reachable by ping
+# Ping check repo host and exit if unreachable
 end=$(( SECONDS + 300 ))
 
 while true; do
