@@ -1,38 +1,58 @@
 Import-Module -Name BurntToast
 
 function Write-ResticLog {
-  # Log to file
+  # Log to file.
   param([string]$message)
   $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
   $entry = "$timestamp - $message" + [System.Environment]::NewLine
-  Add-Content -Path "$logFile" -Value "$entry"
+  Add-Content -Path $logFile -Value $entry
 }
 
 function Send-Notification {
-  # Desktop pop-up notifications
-  New-BurntToastNotification -Text 'Restic encountered an error'
+  # Desktop pop-up notifications.
+  New-BurntToastNotification -Text 'Restic encountered an error.'
 }
 
 function Invoke-ResticBackup {
-  # Perform backup
-  & restic backup "$backupSource" @backupOptions | Tee-Object -FilePath "$logFile" -Append
+  # Perform backup with configured options.
+  & restic backup $backupSource @backupOptions | Tee-Object -FilePath $logFile -Append
 }
 
 function Invoke-ResticForget {
-  # Perform forget and prune
-  & restic forget @forgetOptions | Tee-Object -FilePath "$logFile" -Append
+  # Perform forget and prune with configured options.
+  & restic forget @forgetOptions | Tee-Object -FilePath $logFile -Append
 }
 
 function Test-ResticLock {
-  # Check for stale locks and remove
-  if ( $args[0] -eq 11 ) {
-    Write-ResticLog "$($args[1]) Attempting to unlock."
-    if ( & restic unlock ) {
-      Invoke-ResticBackup
-      $backupExitCode = $LASTEXITCODE
-      $backupExitDescription = $exitCodes.Item($backupExitCode)
+  param (
+    [Parameter(Position = 0)]
+    [int]$ExitCode,
+
+    [Parameter(Position = 1)]
+    [string]$ExitDescription,
+
+    [Parameter(Position = 2)]
+    [scriptblock]$OperationFunction
+  )
+
+  # Check for stale locks
+  if ( $exitCode -eq 11 ) {
+    Write-ResticLog "$exitDescription Attempting to unlock."
+
+  & restic unlock
+  if ( $LASTEXITCODE -eq 0 ) {
+      Write-ResticLog 'Unlock succsessful. Retrying operation'
+
+      # Retry the operation function
+      & $operationFunction
+      return $LASTEXITCODE
+    } else {
+      Write-ResticLog 'Unlock failed. Aborting operation.'
+      return 1
     }
   }
+
+  return $exitCode
 }
 
 $configDir = "$env:APPDATA\restic"
@@ -45,7 +65,6 @@ $backupOptions = @(
   "--iexclude-file=$excludeFile",
   "--exclude-caches",
   "--verbose=1"
-  "--dry-run"
 )
 $forgetOptions = @(
   "--keep-hourly=24",
@@ -54,7 +73,6 @@ $forgetOptions = @(
   "--keep-monthly=3",
   "--prune",
   "--verbose=1"
-  "--dry-run"
 )
 $exitCodes = @{
   0    = "Command was successful."
@@ -78,11 +96,7 @@ if ( -not ( Test-Path -Path "$logDir" -PathType Container ) ) {
   New-Item -Path "$logDir" -ItemType Directory | Out-Null
 }
 
-if ( $env:RESTIC_REPOSITORY -match 'tail' ) {
-  $repoHost = 'nas.taild5a14d.ts.net'
-} else {
-  $repoHost = 'nas.local'
-}
+$repoHost = $env:RESTIC_REPOSITORY -replace '.*@([^:]+):.*', '$1'
 
 $end = (Get-Date).AddSeconds(300)
 while ( $true ) {
@@ -98,20 +112,19 @@ while ( $true ) {
 
 Invoke-ResticBackup
 $backupExitCode = $LASTEXITCODE
-$backupExitDescription = $exitCodes.Item($backupExitCode)
 
-Test-ResticLock $backupExitCode $backupExitDescription
+Test-ResticLock $backupExitCode $exitCodes[$backupExitCode] { Invoke-ResticBackup }
+$backupExitCode = $LASTEXITCODE
 
-Write-ResticLog "Restic backup exited with code ${backupExitCode}: $backupExitDescription"
+Write-ResticLog "Restic backup exited with code ${backupExitCode}: $($exitCodes[$backupExitCode])"
 
 if ( $backupExitCode -eq 0 ) {
   Invoke-ResticForget
   $forgetExitCode = $LASTEXITCODE
-  $forgetExitDescription = $exitCodes.Item($forgetExitCode)
 
-  Test-ResticLock $forgetExitCode $forgetExitDescription
+  Test-ResticLock $forgetExitCode $exitCodes[$forgetExitCode] { Invoke-ResticForget }
 
-  Write-ResticLog "Restic forget exited with code ${forgetExitCode}: $forgetExitDescription"
+  Write-ResticLog "Restic forget exited with code ${forgetExitCode}: $($exitCodes[$forgetExitCode])"
 } else {
   $forgetExitCode = 1
   $forgetExitDescription = "Skipped because backup failed."
@@ -127,7 +140,7 @@ if ( $backupExitCode -eq 0 -and $forgetExitCode -eq 0 ) {
 } else {
   $parameters = @{
     Subject  = "$env:COMPUTERNAME - Restic encountered an error"
-    TextBody = "Restic backup exit code: ${backupExitCode}: $backupExitDescription. Restic forget exit code: ${forgetExitCode}: $forgetExitDescription."
+    TextBody = "Restic backup exit code: ${backupExitCode}: $($exitCodes[$backupExitCode]). Restic forget exit code: ${forgetExitCode}: $($exitCodes[$forgetExitCode])."
   }
   & $PSScriptRoot\New-MailKitMessage.ps1 @parameters
   Send-Notification
