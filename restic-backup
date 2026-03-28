@@ -8,16 +8,12 @@ notify () {
 
 run_backup () {
 	# Perform backup with configured options
-	local source="$1"
-	shift
-	local options=("@")
-	restic backup "$source" "${options[@]}"
+	restic backup "$backup_source" "${backup_options[@]}"
 }
 
 run_forget () {
 	# Perform forget with configured options
-	local options=("$@")
-	restic forget "${options[@]}"
+	restic forget "${forget_options[@]}"
 }
 
 check_lock () {
@@ -27,9 +23,9 @@ check_lock () {
 	local operation_function="$3"
 	
 	if [[ "$exit_code" -eq 11 ]] then
-		echo "$exit_description Attempting to unlock..."
+		echo "$exit_description Attempting to unlock."
 		if restic unlock; then
-			echo "Unlock successful. Retrying $operation_function..."
+			echo "Unlock successful. Retrying $operation_function."
 			"$operation_function"
 			return $?
 		else
@@ -97,27 +93,27 @@ while true; do
 done
 
 # Perform backup and store exit code
-run_backup "$backup_source" "${backup_optoins[@]}"
+run_backup
 backup_exit_code=$?
-backup_exit_description="${exit_codes[$backup_exit_code]:-Unknown exit code}"
 
-check_lock "$backup_exit_code" "$backup_exit_description" run_backup "$backup_source" "${backup_optoins[@]}"
+check_lock "$backup_exit_code" \
+	"${exit_codes[$backup_exit_code]:-Unknown exit code}" run_backup
 backup_exit_code=$?
-backup_exit_description="${exit_codes[$backup_exit_code]:-Unknown exit code}"
 
-echo "Restic backup exited with code $backup_exit_code: $backup_exit_description"
+echo "Restic backup exited with code $backup_exit_code:" \
+	"${exit_codes[$backup_exit_code]:-Unknown exit code}"
 
 # Forget (only if backup is successful)
 if (( backup_exit_code == 0 )); then
-	run_forget "${forget_options[@]}"
+	run_forget
 	forget_exit_code=$?
-	forget_exit_description="${exit_codes[$forget_exit_code]:-Unknown exit code}"
 
-	check_lock "$forget_exit_code" "$forget_exit_description" run_forget "${forget_options[@]}"
+	check_lock "$forget_exit_code" \
+		"${exit_codes[$forget_exit_code]:-Unknown exit code}" run_forget
 	forget_exit_code=$?
-	forget_exit_description="${exit_codes[$forget_exit_code]:-Unknown exit code}"
 
-	echo "Restic forget exited with code $forget_exit_code: $forget_exit_description"
+	echo "Restic forget exited with code $forget_exit_code:" \
+		"${exit_codes[$forget_exit_code]:-Unknown exit code}"
 else
 	forget_exit_code=1
 	forget_exit_description='Skipped because backup failed.'
@@ -134,8 +130,10 @@ else
 	{
 		echo "Subject: $HOSTNAME Restic encountered an error"
 		echo
-		echo "Restic backup exit code: $backup_exit_code: $backup_exit_description. \
-		    Restic forget exit code: $forget_exit_code: $forget_exit_description"
+		echo "Restic backup exit code: $backup_exit_code: " \
+			"${exit_codes[$backup_exit_code]:-Unknown exit code} " \
+		    	"Restic forget exit code: $forget_exit_code: " \
+			"${exit_codes[$forget_exit_code]:-Unknown exit code}"
 	} | msmtp "$recipient"
 	notify
 	exit 1
