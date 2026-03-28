@@ -45,6 +45,7 @@ $backupOptions = @(
   "--iexclude-file=$excludeFile",
   "--exclude-caches",
   "--verbose=1"
+  "--dry-run"
 )
 $forgetOptions = @(
   "--keep-hourly=24",
@@ -53,6 +54,7 @@ $forgetOptions = @(
   "--keep-monthly=3",
   "--prune",
   "--verbose=1"
+  "--dry-run"
 )
 $exitCodes = @{
   0    = "Command was successful."
