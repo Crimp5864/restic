@@ -8,12 +8,16 @@ notify () {
 
 run_backup () {
 	# Perform backup with configured options
-	restic backup "$backup_source" "${backup_options[@]}"
+	local source="$1"
+	shift
+	local options=("@")
+	restic backup "$source" "${options[@]}"
 }
 
 run_forget () {
 	# Perform forget with configured options
-	restic forget "${forget_options[@]}"
+	local options=("$@")
+	restic forget "${options[@]}"
 }
 
 check_lock () {
@@ -93,11 +97,11 @@ while true; do
 done
 
 # Perform backup and store exit code
-run_backup
+run_backup "$backup_source" "${backup_optoins[@]}"
 backup_exit_code=$?
 backup_exit_description="${exit_codes[$backup_exit_code]:-Unknown exit code}"
 
-check_lock "$backup_exit_code" "$backup_exit_description" run_backup
+check_lock "$backup_exit_code" "$backup_exit_description" run_backup "$backup_source" "${backup_optoins[@]}"
 backup_exit_code=$?
 backup_exit_description="${exit_codes[$backup_exit_code]:-Unknown exit code}"
 
@@ -105,11 +109,11 @@ echo "Restic backup exited with code $backup_exit_code: $backup_exit_description
 
 # Forget (only if backup is successful)
 if (( backup_exit_code == 0 )); then
-	run_forget
+	run_forget "${forget_options[@]}"
 	forget_exit_code=$?
 	forget_exit_description="${exit_codes[$forget_exit_code]:-Unknown exit code}"
 
-	check_lock "$forget_exit_code" "$forget_exit_description" run_forget
+	check_lock "$forget_exit_code" "$forget_exit_description" run_forget "${forget_options[@]}"
 	forget_exit_code=$?
 	forget_exit_description="${exit_codes[$forget_exit_code]:-Unknown exit code}"
 
