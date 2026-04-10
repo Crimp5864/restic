@@ -16,9 +16,9 @@ run_forget () {
 	restic forget "${forget_options[@]}"
 }
 
-run_check () {
-	# Process consistency checks
-}
+#run_check () {
+#	# Process consistency checks
+#}
 
 check_lock () {
 	# Check for stale locks and remove
