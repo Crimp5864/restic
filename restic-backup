@@ -125,20 +125,22 @@ fi
 
 if (( backup_exit_code == 0 && forget_exit_code == 0 )); then
 	{
+		echo "To: $recipient"
 		echo "Subject: $HOSTNAME Restic has completed successfully"
 		echo
 		echo "Restic exited with code 0: Command was successful."
-	} | msmtp "$recipient"
+	} | msmtp -t -a default
 	exit 0
 else
 	{
+		echo "To: $recipient"
 		echo "Subject: $HOSTNAME Restic encountered an error"
 		echo
 		echo "Restic backup exit code: $backup_exit_code: " \
 			"${exit_codes[$backup_exit_code]:-Unknown exit code} " \
 		    	"Restic forget exit code: $forget_exit_code: " \
 			"${exit_codes[$forget_exit_code]:-Unknown exit code}"
-	} | msmtp "$recipient"
+	} | msmtp  -t -a default
 	notify
 	exit 1
 fi
