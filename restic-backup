@@ -83,17 +83,29 @@ fi
 repo_host="${RESTIC_REPOSITORY#*@}"
 repo_host="${repo_host%%:*}"
 
-# Ping check repo host and exit if unreachable
+# Check repo host is reachable and writable
 end=$(( SECONDS + 300 ))
 while true; do
 	if ping -c 1 -W 2 "$repo_host" &> /dev/null; then
-		break
+		echo "$repo_host reachable on network"
+		while true; do
+			if restic backup --stdin --dry-run <<< "Write check" \
+				&> /dev/null; then
+				echo "Write to $repo_host successful"
+				break 2
+			elif (( SECONDS >= end )); then
+				echo "Unable to write to $repo_host"
+				exit 1
+			fi
+			echo 'Waiting to write'
+			sleep 5
+		done
 	elif (( SECONDS >= end )); then
 		echo "Unable to reach $repo_host" >&2
 		exit 1
 	fi
 	echo 'Waiting for network'
-	sleep 1
+	sleep 5
 done
 
 # Perform backup and store exit code
