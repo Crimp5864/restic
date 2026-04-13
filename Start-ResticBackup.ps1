@@ -127,7 +127,6 @@ if ( $backupExitCode -eq 0 ) {
   Write-ResticLog "Restic forget exited with code ${forgetExitCode}: $($exitCodes[$forgetExitCode])"
 } else {
   $forgetExitCode = 1
-  $forgetExitDescription = "Skipped because backup failed."
 }
 
 if ( $backupExitCode -eq 0 -and $forgetExitCode -eq 0 ) {
