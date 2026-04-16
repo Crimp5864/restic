@@ -97,9 +97,9 @@ done
 run_backup
 backup_exit_code=$?
 
-check_lock "$backup_exit_code" \
-	"${exit_codes[$backup_exit_code]:-Unknown exit code}" run_backup
-backup_exit_code=$?
+#check_lock "$backup_exit_code" \
+#	"${exit_codes[$backup_exit_code]:-Unknown exit code}" run_backup
+#backup_exit_code=$?
 
 echo "Restic backup exited with code $backup_exit_code:" \
 	"${exit_codes[$backup_exit_code]:-Unknown exit code}"
@@ -109,9 +109,9 @@ if (( backup_exit_code == 0 )); then
 	run_forget
 	forget_exit_code=$?
 
-	check_lock "$forget_exit_code" \
-		"${exit_codes[$forget_exit_code]:-Unknown exit code}" run_forget
-	forget_exit_code=$?
+	#check_lock "$forget_exit_code" \
+	#	"${exit_codes[$forget_exit_code]:-Unknown exit code}" run_forget
+	#forget_exit_code=$?
 
 	echo "Restic forget exited with code $forget_exit_code:" \
 		"${exit_codes[$forget_exit_code]:-Unknown exit code}"

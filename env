@@ -6,6 +6,7 @@
 #export RESTIC_REPOSITORY="sftp:<username>@<tailscale_server>:/restic/${HOSTNAME,,}"
 
 # Backblaze B2 (AWS compatible, shared)
+#export RESTIC_REPOSITORY="s3:s3.us-west-004.backblazeb2.com/nkwhq-restic"
 #export B2_ACCOUNT_ID="<my_application_key_id>"
-#export BW_ACCOUNT_KEY="<my_application_key"
+#export B2_ACCOUNT_KEY="<my_application_key"
 
