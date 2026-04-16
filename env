@@ -1,3 +1,11 @@
+# Repo password
+#export RESTIC_PASSWORD_FILE="<password file>"
+
+# SFTP (Dedicated)
 #export RESTIC_REPOSITORY="sftp:<username>@<local_server>:/restic/${HOSTNAME,,}"
 #export RESTIC_REPOSITORY="sftp:<username>@<tailscale_server>:/restic/${HOSTNAME,,}"
-export RESTIC_PASSWORD_FILE="<password file>"
+
+# Backblaze B2 (AWS compatible, shared)
+#export B2_ACCOUNT_ID="<my_application_key_id>"
+#export BW_ACCOUNT_KEY="<my_application_key"
+

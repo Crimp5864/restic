@@ -79,32 +79,17 @@ if ! source "$env_file"; then
 	exit 1
 fi
 
-# Detect VPN and set repo host accordingly
-repo_host="${RESTIC_REPOSITORY#*@}"
-repo_host="${repo_host%%:*}"
-
-# Check repo host is reachable and writable
-end=$(( SECONDS + 300 ))
+# Check repo is writable
+end=$(( SECONDS + 60 ))
 while true; do
-	if ping -c 1 -W 2 "$repo_host" &> /dev/null; then
-		echo "$repo_host reachable on network"
-		while true; do
-			if restic backup --stdin --dry-run <<< "Write check" \
-				&> /dev/null; then
-				echo "Write to $repo_host successful"
-				break 2
-			elif (( SECONDS >= end )); then
-				echo "Unable to write to $repo_host"
-				exit 1
-			fi
-			echo 'Waiting to write'
-			sleep 5
-		done
+	if restic backup --stdin --dry-run <<< "Write check" &> /dev/null; then
+		echo "Write to $RESTIC_REPOSITORY successful"
+		break
 	elif (( SECONDS >= end )); then
-		echo "Unable to reach $repo_host" >&2
+		echo "Unable to write to $RESTIC_REPOSITORY"
 		exit 1
 	fi
-	echo 'Waiting for network'
+	echo "Waiting to write to $RESTIC_REPOSITORY"
 	sleep 5
 done
 

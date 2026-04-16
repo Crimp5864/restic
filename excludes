@@ -1,8 +1,8 @@
 .cache/
 .local/share/Trash/
 .local/share/Steam/
-.config/google-chrome/Default/Cache/
-.config/Code/Cache/
+.config/google-chrome/
+.config/Code/
 Downloads/
 Google Drive/
 GoogleDrive/
@@ -10,3 +10,6 @@ GDrive/
 password
 VirtualBox VMs/
 .vagrant.d/boxes/
+libvirt/images/
+.libvirt/
+discord/
