@@ -5,4 +5,3 @@
 #export RESTIC_REPOSITORY="s3:s3.us-west-004.backblazeb2.com/nkwhq-restic/${HOSTNAME}"
 #export AWS_ACCESS_KEY_ID="<my_application_key_id>"
 #export AWS_SECRET_ACCESS_KEY="<my_application_key"
-
