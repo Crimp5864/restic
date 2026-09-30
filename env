@@ -5,3 +5,8 @@
 #export RESTIC_REPOSITORY="s3:s3.us-west-004.backblazeb2.com/nkwhq-restic/${HOSTNAME}"
 #export AWS_ACCESS_KEY_ID="<my_application_key_id>"
 #export AWS_SECRET_ACCESS_KEY="<my_application_key"
+
+# Cloudflare R2 (AWS compatible)
+#export RESTIC_REPOSITORY="s3:0021ba0076e202a275b6f296f7ced3c4.r2.cloudflarestorage.com/nkwhq-restic/${HOSTNAME}"
+#export AWS_ACCESS_KEY_ID="<my_application_key_id>"
+#export AWS_SECRET_ACCESS_KEY="<my_application_key"
