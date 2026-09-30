@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Functions
-notify () {
+notify_error () {
 	# Desktop pop-up notifications
 	notify-send 'Restic encountered an error'
 }
@@ -75,7 +75,7 @@ recipient='nicholaswilson97@gmail.com'
 # Source env file or exit with error
 if ! source "$env_file"; then
 	echo "Unable to source $env_file" >&2
-	notify
+	notify_error
 	exit 1
 fi
 
@@ -140,6 +140,6 @@ else
 		    	"Restic forget exit code: $forget_exit_code: " \
 			"${exit_codes[$forget_exit_code]:-Unknown exit code}"
 	} | msmtp --read-recipients --account=default
-	notify
+	notify_error
 	exit 1
 fi
