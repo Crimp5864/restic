@@ -16,6 +16,11 @@ run_forget () {
 	restic forget "${forget_options[@]}"
 }
 
+run_sync () {
+	# Perform rclone sync from b2 to r2
+	#rclone sync b2:nkwhq-restic/${HOSTAME}/ r2:nkwhq-restic/${HOSTNAME}/ --verbose
+}
+
 #run_check () {
 #	# Process consistency checks
 #}
@@ -119,6 +124,10 @@ else
 	forget_exit_code=1
 	forget_exit_description='Skipped because backup failed.'
 fi
+
+#if (( forget_exit_code == 0 )); then
+#	run_sync
+#fi
 
 if (( backup_exit_code == 0 && forget_exit_code == 0 )); then
 	{
