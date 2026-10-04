@@ -16,10 +16,10 @@ run_forget () {
 	restic forget "${forget_options[@]}"
 }
 
-run_sync () {
-	# Perform rclone sync from b2 to r2
-	#rclone sync b2:nkwhq-restic/${HOSTAME}/ r2:nkwhq-restic/${HOSTNAME}/ --verbose
-}
+#run_sync () {
+#	# Perform rclone sync from b2 to r2
+#	#rclone sync b2:nkwhq-restic/${HOSTAME}/ r2:nkwhq-restic/${HOSTNAME}/ --verbose
+#}
 
 #run_check () {
 #	# Process consistency checks
@@ -87,7 +87,7 @@ fi
 # Check repo is writable
 end=$(( SECONDS + 60 ))
 while true; do
-	if restic backup --stdin --dry-run <<< "Write check" &> /dev/null; then
+	if timeout 10s restic backup --stdin --dry-run <<< "Write check" &> /dev/null; then
 		echo "Write to $RESTIC_REPOSITORY successful"
 		break
 	elif (( SECONDS >= end )); then
