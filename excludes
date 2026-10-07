@@ -1,4 +1,5 @@
-.cache/
+*cache*/
+*Cache*/
 .local/share/Trash/
 .local/share/Steam/
 .config/google-chrome/
