@@ -1,3 +1,5 @@
+# Line delimited list of file patterns or paths to be excluded from backup.
+# To be passed to the following options: --exclude-file, --iexclude-file
 *cache*/
 *Cache*/
 .local/share/Trash/

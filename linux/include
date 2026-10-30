@@ -1,0 +1,2 @@
+# Line delimited list of file patterns or paths to be backed up.
+# To be passed to --files-from, --files-from-verbatim, or --files-from-raw.
